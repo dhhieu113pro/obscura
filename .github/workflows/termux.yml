@@ -41,10 +41,17 @@ jobs:
       - name: Build stealth release binaries
         run: cargo build --profile release-dist -p obscura-cli --bins --features render,stealth
 
+      - name: Smoke test (unpatched, runs natively on this runner)
+        run: |
+          BIN_DIR=target/release-dist
+          "$BIN_DIR/obscura" fetch "data:text/html,<title>ok</title>" --eval "1+1"
+          "$BIN_DIR/obscura" fetch "data:text/html,<style>body{margin:0;background:%23123456}</style>" --screenshot smoke.png
+          test -s smoke.png
+
       - name: Patch ELF for Termux
         run: |
           PREFIX=/data/data/com.termux/files/usr
-          BIN_DIR=target/aarch64-unknown-linux-gnu/release-dist
+          BIN_DIR=target/release-dist
           mkdir -p dist
           cp "$BIN_DIR/obscura" "$BIN_DIR/obscura-worker" dist/
           for BIN in dist/obscura dist/obscura-worker; do
@@ -52,11 +59,13 @@ jobs:
                      --force-rpath --set-rpath "$PREFIX/glibc/lib" "$BIN"
           done
 
-      - name: Smoke test
+      - name: Verify patch
         run: |
-          ./dist/obscura fetch "data:text/html,<title>ok</title>" --eval "1+1"
-          ./dist/obscura fetch "data:text/html,<style>body{margin:0;background:%23123456}</style>" --screenshot smoke.png
-          test -s smoke.png
+          for BIN in dist/obscura dist/obscura-worker; do
+            readelf -l "$BIN" | grep -q 'ld-linux-aarch64.so.1' || { echo "$BIN: interpreter not set" >&2; exit 1; }
+            readelf -d "$BIN" | grep -q 'RPATH.*glibc/lib' || { echo "$BIN: RPATH not set" >&2; exit 1; }
+            readelf -d "$BIN" | grep -q RUNPATH && { echo "$BIN: RUNPATH present, must be RPATH" >&2; exit 1; }
+          done
 
       - name: Package
         run: tar czf obscura-aarch64-termux.tar.gz -C dist obscura obscura-worker
