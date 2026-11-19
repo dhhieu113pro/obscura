@@ -56,6 +56,23 @@ with the commands above:
 
 No `grun`, no `LD_LIBRARY_PATH` overrides, no `SSL_CERT_FILE`.
 
+## Speed vs Playwright
+
+Same nine-step login flow, same device, interleaved runs
+([details and method](bench/login-flow/RESULTS.md)):
+
+| | pwterm (system Chromium) | obscura |
+|---|---|---|
+| Total, median of 5 | 4452 ms | 4227 ms |
+| Page navigation | ~1238 ms | ~1500 ms |
+| DOM steps (fill/click/assert) | ~2075 ms | ~1800 ms |
+| Peak RAM | ~1700 MB | ~190 MB |
+| Cold start | 337–598 ms launch | 62–74 ms `serve` |
+
+Wall clock is roughly a tie; obscura uses **~8–10x less memory**. Defeaturing
+notice: obscura has no YAML flow runner — the benchmark drives both with
+playwright-core over CDP / launch.
+
 ## Limits
 
 - V8 has no musl aarch64 prebuilt, so a fully static build isn't possible;
