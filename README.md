@@ -40,10 +40,27 @@ obscura fetch https://example.com --eval "document.title"
 Keep both binaries in the same directory — `obscura` looks for `obscura-worker`
 next to itself. Don't run them through `grun`.
 
+## Verified on device
+
+Termux on aarch64, `glibc 2.44`, installed from the `termux-latest` release
+with the commands above:
+
+| Check | Result |
+|---|---|
+| `obscura fetch https://example.com --eval "document.title"` | `Example Domain` |
+| `obscura serve --port 9222 --stealth` | CDP responds, `Chrome/145.0.0.0` |
+| `obscura scrape <2 urls> --concurrency 2` | both fetched, worker spawned |
+| `obscura fetch https://bot.sannysoft.com --stealth` | WebDriver missing/passed, Chrome passed, plugins 5 |
+| `obscura fetch https://example.com --screenshot s.png` | PNG written |
+| JS-heavy site (`news.ycombinator.com`) | 30 `.titleline` nodes |
+
+No `grun`, no `LD_LIBRARY_PATH` overrides, no `SSL_CERT_FILE`.
+
 ## Limits
 
 - V8 has no musl aarch64 prebuilt, so a fully static build isn't possible;
   `glibc` from Termux is required.
+- No PDF export upstream — only `--screenshot`.
 - No hardware-accelerated capture.
 - Built from upstream `main` with `render,stealth`. Re-run the patchelf line if
   you replace the binaries yourself.
