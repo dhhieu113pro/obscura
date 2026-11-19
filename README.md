@@ -73,6 +73,20 @@ Wall clock is roughly a tie; obscura uses **~8–10x less memory**. Defeaturing
 notice: obscura has no YAML flow runner — the benchmark drives both with
 playwright-core over CDP / launch.
 
+### Screenshot capture
+
+One-shot `fetch --screenshot` vs `pwterm shot`, 5 interleaved rounds
+([results](bench/login-flow/screenshot-RESULTS.md)):
+
+| | obscura | pwterm shot |
+|---|---|---|
+| Median | **599 ms** | 2328 ms |
+| Output | 1280×720 PNG, 63 KB | 1280×720 PNG, 71 KB |
+
+~3.9x faster, same page (8×8 pixel diff shows only text antialiasing). Chromium
+navigates a page slightly faster, but pays process startup on every command;
+obscura does not.
+
 ## Limits
 
 - V8 has no musl aarch64 prebuilt, so a fully static build isn't possible;
