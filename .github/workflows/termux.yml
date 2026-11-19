@@ -62,9 +62,12 @@ jobs:
       - name: Verify patch
         run: |
           for BIN in dist/obscura dist/obscura-worker; do
-            readelf -l "$BIN" | grep -q 'ld-linux-aarch64.so.1' || { echo "$BIN: interpreter not set" >&2; exit 1; }
+            readelf -l "$BIN" | grep -q 'glibc/lib/ld-linux-aarch64.so.1' || { echo "$BIN: interpreter not set" >&2; exit 1; }
             readelf -d "$BIN" | grep -q 'RPATH.*glibc/lib' || { echo "$BIN: RPATH not set" >&2; exit 1; }
-            readelf -d "$BIN" | grep -q RUNPATH && { echo "$BIN: RUNPATH present, must be RPATH" >&2; exit 1; }
+            if readelf -d "$BIN" | grep -q RUNPATH; then
+              echo "$BIN: RUNPATH present, must be RPATH" >&2
+              exit 1
+            fi
           done
 
       - name: Package
