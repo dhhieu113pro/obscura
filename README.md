@@ -134,6 +134,58 @@ curl -LO https://github.com/h4ckf0r0day/obscura/releases/latest/download/obscura
 tar xzf obscura-x86_64-macos.tar.gz
 ```
 
+### Android / Termux (aarch64)
+
+Android uses bionic libc, so the Linux build needs its loader and library path
+pointed at Termux's glibc prefix. This fork ships a pre-patched tarball built by
+[`.github/workflows/termux.yml`](.github/workflows/termux.yml):
+
+```bash
+# 1. glibc repo (provides the loader the binary is patched to use)
+pkg install -y glibc-repo glibc patchelf
+
+# 2. Pre-patched binaries
+mkdir -p ~/obscura-bin && cd ~/obscura-bin
+curl -LO https://github.com/dhhieu113pro/obscura/releases/latest/download/obscura-aarch64-termux.tar.gz
+tar xzf obscura-aarch64-termux.tar.gz
+chmod +x obscura obscura-worker
+
+# 3. Put it on PATH
+mkdir -p "$PREFIX/bin"
+ln -sf ~/obscura-bin/obscura "$PREFIX/bin/obscura"
+
+obscura fetch https://example.com --eval "document.title"
+```
+
+Both binaries must stay in the same directory: `obscura` looks for
+`obscura-worker` next to its own real path.
+
+Do **not** run these through `grun`/`glibc-runner` — the binary is already
+patched, and grun re-sets `LD_LIBRARY_PATH` to a musl `libgcc_s.so.1`, which
+fails with `libc.musl-aarch64.so.1: cannot open shared object file`
+([#193](https://github.com/h4ckf0r0day/obscura/issues/193)).
+
+**Building the tarball yourself** (or after a `git pull` on the binaries):
+
+```bash
+BIN_DIR=target/aarch64-unknown-linux-gnu/release-dist
+PREFIX=/data/data/com.termux/files/usr
+for BIN in obscura obscura-worker; do
+  patchelf --set-interpreter "$PREFIX/glibc/lib/ld-linux-aarch64.so.1" \
+           --force-rpath --set-rpath "$PREFIX/glibc/lib" "$BIN_DIR/$BIN"
+done
+```
+
+`--force-rpath` matters: RPATH is searched *before* Termux's
+`LD_LIBRARY_PATH`, while RUNPATH is searched *after* it, and Termux's
+`LD_LIBRARY_PATH/$PREFIX/lib` holds a musl `libgcc_s.so.1` that shadows the
+glibc one.
+
+Known limits on Termux: V8 has no musl aarch64 prebuilt, so a fully static
+binary is not possible — the `glibc-repo` package is required. The `render`
+feature (screenshots) works on the arm64 build; hardware-accelerated capture
+does not.
+
 ### Windows
 
 x86_64 Windows only (no 32-bit build).
